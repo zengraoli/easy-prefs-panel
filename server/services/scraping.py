@@ -1,23 +1,39 @@
-from scrapling import Fetcher, StealthyFetcher, PlayWrightFetcher
+from scrapling import Fetcher, StealthyFetcher
+import time
+
+# Simple in-memory cache: {url: (timestamp, page)}
+_page_cache: dict[str, tuple[float, object]] = {}
+_CACHE_TTL = 60  # seconds
 
 
-def get_fetcher(fetcher_type: str):
-    if fetcher_type == "stealthy":
-        return StealthyFetcher()
-    elif fetcher_type == "playwright":
-        return PlayWrightFetcher()
-    return Fetcher()
-
-
-def fetch_page(url: str, fetcher_type: str = "normal"):
-    fetcher = get_fetcher(fetcher_type)
-    page = fetcher.fetch(url)
+def _get_cached_page(url: str, fetcher_type: str = "normal"):
+    key = f"{fetcher_type}:{url}"
+    now = time.time()
+    if key in _page_cache:
+        ts, page = _page_cache[key]
+        if now - ts < _CACHE_TTL:
+            return page
+        del _page_cache[key]
+    page = fetch_page(url, fetcher_type)
+    _page_cache[key] = (now, page)
     return page
 
 
+def fetch_page(url: str, fetcher_type: str = "normal"):
+    if fetcher_type == "stealthy":
+        return StealthyFetcher.fetch(url)
+    elif fetcher_type == "playwright":
+        try:
+            from scrapling import PlayWrightFetcher
+            return PlayWrightFetcher.fetch(url, headless=True, network_idle=True)
+        except ImportError:
+            raise RuntimeError("请先运行 scrapling install 安装浏览器依赖")
+    else:
+        return Fetcher.get(url)
+
+
 def test_selector(url: str, selector: str, selector_type: str = "css", attribute: str | None = None):
-    fetcher = Fetcher()
-    page = fetcher.fetch(url)
+    page = _get_cached_page(url)
 
     results = []
     if selector_type == "css":
@@ -48,8 +64,7 @@ def test_selector(url: str, selector: str, selector_type: str = "css", attribute
 
 
 def find_similar(url: str, selector: str):
-    fetcher = Fetcher()
-    page = fetcher.fetch(url)
+    page = _get_cached_page(url)
     target = page.css(selector)
     if target is None:
         return []
