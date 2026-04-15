@@ -76,7 +76,7 @@ function SelectorPage() {
     const lastField = fields[fields.length - 1];
     setSimilarLoading(true);
     try {
-      const res = await previewApi.similar(url, lastField.selector);
+      const res = await previewApi.similar(url, lastField.selector, fetcherType);
       if (res.success && res.results && res.results.length > 0) {
         alert(`找到 ${res.results.length} 个相似元素！\n\n` + res.results.map((r, i) => `${i + 1}. [${r.tag}] ${r.text.substring(0, 80)}`).join("\n"));
       } else {
