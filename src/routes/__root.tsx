@@ -29,16 +29,15 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Scrapling 配置器" },
+      { name: "description", content: "可视化配置 Scrapling 爬虫，无需编程经验" },
+      { name: "author", content: "Scrapling" },
+      { property: "og:title", content: "Scrapling 配置器" },
+      { property: "og:description", content: "可视化配置 Scrapling 爬虫，无需编程经验" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Lovable Generated Project" },
+      { name: "twitter:title", content: "Scrapling 配置器" },
+      { name: "twitter:description", content: "可视化配置 Scrapling 爬虫，无需编程经验" },
     ],
     links: [
       {
@@ -54,7 +53,7 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <HeadContent />
       </head>

@@ -15,10 +15,10 @@ export async function apiFetch<T = unknown>(path: string, body?: unknown, method
 export const previewApi = {
   fetch: (url: string, fetcherType: string) =>
     apiFetch<{ success: boolean; html?: string; error?: string }>("/api/preview/fetch", { url, fetcher_type: fetcherType }),
-  test: (url: string, selector: string, selectorType: string, attribute?: string) =>
-    apiFetch<{ success: boolean; results?: Array<{ text: string; tag: string }>; error?: string }>("/api/preview/test", { url, selector, selector_type: selectorType, attribute }),
-  similar: (url: string, selector: string) =>
-    apiFetch<{ success: boolean; results?: Array<{ text: string; tag: string; html: string }>; error?: string }>("/api/preview/similar", { url, selector }),
+  test: (url: string, selector: string, selectorType: string, attribute?: string, fetcherType: string = "normal") =>
+    apiFetch<{ success: boolean; results?: Array<{ text: string; tag: string }>; error?: string }>("/api/preview/test", { url, selector, selector_type: selectorType, attribute, fetcher_type: fetcherType }),
+  similar: (url: string, selector: string, fetcherType: string = "normal") =>
+    apiFetch<{ success: boolean; results?: Array<{ text: string; tag: string; html: string }>; error?: string }>("/api/preview/similar", { url, selector, fetcher_type: fetcherType }),
 };
 
 // Worker APIs
@@ -54,7 +54,7 @@ export const workersApi = {
   update: (id: number, data: WorkerFormData) =>
     apiFetch<{ success: boolean }>(`/api/workers/${id}`, data, "PUT"),
   remove: (id: number) =>
-    fetch(`${API_BASE}/api/workers/${id}`, { method: "DELETE" }).then((r) => r.json()),
+    apiFetch<{ success: boolean }>(`/api/workers/${id}`, undefined, "DELETE"),
   test: (id: number) => apiFetch<{ success: boolean; message: string }>(`/api/workers/${id}/test`, {}),
   deploy: (id: number, script: string) =>
     apiFetch<{ success: boolean; output?: string; errors?: string; message?: string }>(`/api/workers/${id}/deploy`, { script }),
