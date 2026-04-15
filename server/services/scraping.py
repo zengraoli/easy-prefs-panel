@@ -32,8 +32,8 @@ def fetch_page(url: str, fetcher_type: str = "normal"):
         return Fetcher.get(url)
 
 
-def test_selector(url: str, selector: str, selector_type: str = "css", attribute: str | None = None):
-    page = _get_cached_page(url)
+def test_selector(url: str, selector: str, selector_type: str = "css", attribute: str | None = None, fetcher_type: str = "normal"):
+    page = _get_cached_page(url, fetcher_type)
 
     results = []
     if selector_type == "css":
@@ -63,8 +63,8 @@ def test_selector(url: str, selector: str, selector_type: str = "css", attribute
     return results
 
 
-def find_similar(url: str, selector: str):
-    page = _get_cached_page(url)
+def find_similar(url: str, selector: str, fetcher_type: str = "normal"):
+    page = _get_cached_page(url, fetcher_type)
     target = page.css(selector)
     if target is None:
         return []

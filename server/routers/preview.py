@@ -16,11 +16,13 @@ class TestSelectorRequest(BaseModel):
     selector: str
     selector_type: str = "css"
     attribute: Optional[str] = None
+    fetcher_type: str = "normal"
 
 
 class SimilarRequest(BaseModel):
     url: str
     selector: str
+    fetcher_type: str = "normal"
 
 
 @router.post("/fetch")
@@ -36,7 +38,7 @@ def preview_fetch(req: FetchRequest):
 @router.post("/test")
 def preview_test(req: TestSelectorRequest):
     try:
-        results = test_selector(req.url, req.selector, req.selector_type, req.attribute)
+        results = test_selector(req.url, req.selector, req.selector_type, req.attribute, req.fetcher_type)
         return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -45,7 +47,7 @@ def preview_test(req: TestSelectorRequest):
 @router.post("/similar")
 def preview_similar(req: SimilarRequest):
     try:
-        results = find_similar(req.url, req.selector)
+        results = find_similar(req.url, req.selector, req.fetcher_type)
         return {"success": True, "results": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
