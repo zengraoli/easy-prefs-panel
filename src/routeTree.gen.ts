@@ -9,12 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkersRouteImport } from './routes/workers'
 import { Route as SpiderRouteImport } from './routes/spider'
 import { Route as SessionRouteImport } from './routes/session'
+import { Route as SelectorRouteImport } from './routes/selector'
 import { Route as ProxyRouteImport } from './routes/proxy'
 import { Route as FetcherRouteImport } from './routes/fetcher'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WorkersRoute = WorkersRouteImport.update({
+  id: '/workers',
+  path: '/workers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SpiderRoute = SpiderRouteImport.update({
   id: '/spider',
   path: '/spider',
@@ -23,6 +30,11 @@ const SpiderRoute = SpiderRouteImport.update({
 const SessionRoute = SessionRouteImport.update({
   id: '/session',
   path: '/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelectorRoute = SelectorRouteImport.update({
+  id: '/selector',
+  path: '/selector',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProxyRoute = ProxyRouteImport.update({
@@ -45,42 +57,79 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/fetcher': typeof FetcherRoute
   '/proxy': typeof ProxyRoute
+  '/selector': typeof SelectorRoute
   '/session': typeof SessionRoute
   '/spider': typeof SpiderRoute
+  '/workers': typeof WorkersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/fetcher': typeof FetcherRoute
   '/proxy': typeof ProxyRoute
+  '/selector': typeof SelectorRoute
   '/session': typeof SessionRoute
   '/spider': typeof SpiderRoute
+  '/workers': typeof WorkersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/fetcher': typeof FetcherRoute
   '/proxy': typeof ProxyRoute
+  '/selector': typeof SelectorRoute
   '/session': typeof SessionRoute
   '/spider': typeof SpiderRoute
+  '/workers': typeof WorkersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
+  fullPaths:
+    | '/'
+    | '/fetcher'
+    | '/proxy'
+    | '/selector'
+    | '/session'
+    | '/spider'
+    | '/workers'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
-  id: '__root__' | '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
+  to:
+    | '/'
+    | '/fetcher'
+    | '/proxy'
+    | '/selector'
+    | '/session'
+    | '/spider'
+    | '/workers'
+  id:
+    | '__root__'
+    | '/'
+    | '/fetcher'
+    | '/proxy'
+    | '/selector'
+    | '/session'
+    | '/spider'
+    | '/workers'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FetcherRoute: typeof FetcherRoute
   ProxyRoute: typeof ProxyRoute
+  SelectorRoute: typeof SelectorRoute
   SessionRoute: typeof SessionRoute
   SpiderRoute: typeof SpiderRoute
+  WorkersRoute: typeof WorkersRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workers': {
+      id: '/workers'
+      path: '/workers'
+      fullPath: '/workers'
+      preLoaderRoute: typeof WorkersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/spider': {
       id: '/spider'
       path: '/spider'
@@ -93,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/session'
       fullPath: '/session'
       preLoaderRoute: typeof SessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/selector': {
+      id: '/selector'
+      path: '/selector'
+      fullPath: '/selector'
+      preLoaderRoute: typeof SelectorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/proxy': {
@@ -123,8 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FetcherRoute: FetcherRoute,
   ProxyRoute: ProxyRoute,
+  SelectorRoute: SelectorRoute,
   SessionRoute: SessionRoute,
   SpiderRoute: SpiderRoute,
+  WorkersRoute: WorkersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
