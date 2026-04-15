@@ -9,8 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpiderRouteImport } from './routes/spider'
+import { Route as SessionRouteImport } from './routes/session'
+import { Route as ProxyRouteImport } from './routes/proxy'
+import { Route as FetcherRouteImport } from './routes/fetcher'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SpiderRoute = SpiderRouteImport.update({
+  id: '/spider',
+  path: '/spider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionRoute = SessionRouteImport.update({
+  id: '/session',
+  path: '/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyRoute = ProxyRouteImport.update({
+  id: '/proxy',
+  path: '/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FetcherRoute = FetcherRouteImport.update({
+  id: '/fetcher',
+  path: '/fetcher',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +43,72 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fetcher': typeof FetcherRoute
+  '/proxy': typeof ProxyRoute
+  '/session': typeof SessionRoute
+  '/spider': typeof SpiderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/fetcher': typeof FetcherRoute
+  '/proxy': typeof ProxyRoute
+  '/session': typeof SessionRoute
+  '/spider': typeof SpiderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/fetcher': typeof FetcherRoute
+  '/proxy': typeof ProxyRoute
+  '/session': typeof SessionRoute
+  '/spider': typeof SpiderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
+  id: '__root__' | '/' | '/fetcher' | '/proxy' | '/session' | '/spider'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FetcherRoute: typeof FetcherRoute
+  ProxyRoute: typeof ProxyRoute
+  SessionRoute: typeof SessionRoute
+  SpiderRoute: typeof SpiderRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/spider': {
+      id: '/spider'
+      path: '/spider'
+      fullPath: '/spider'
+      preLoaderRoute: typeof SpiderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session': {
+      id: '/session'
+      path: '/session'
+      fullPath: '/session'
+      preLoaderRoute: typeof SessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy': {
+      id: '/proxy'
+      path: '/proxy'
+      fullPath: '/proxy'
+      preLoaderRoute: typeof ProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fetcher': {
+      id: '/fetcher'
+      path: '/fetcher'
+      fullPath: '/fetcher'
+      preLoaderRoute: typeof FetcherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +121,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FetcherRoute: FetcherRoute,
+  ProxyRoute: ProxyRoute,
+  SessionRoute: SessionRoute,
+  SpiderRoute: SpiderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
