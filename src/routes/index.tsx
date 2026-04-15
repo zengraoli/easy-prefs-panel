@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Globe, Bot, Shield, Wifi, MousePointerClick } from "lucide-react";
+import { Globe, Bot, Shield, Wifi, MousePointerClick, Server } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/")({
@@ -47,6 +47,13 @@ const features = [
     title: "会话管理",
     desc: "保持登录状态访问多个页面，模拟真实用户的连续浏览行为",
     color: "bg-chart-4/10 text-chart-4",
+  },
+  {
+    to: "/workers" as const,
+    icon: Server,
+    title: "机器管理",
+    desc: "管理远程执行服务器，查看状态、测试连接、部署爬虫脚本",
+    color: "bg-chart-1/10 text-chart-1",
   },
 ];
 
