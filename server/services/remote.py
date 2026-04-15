@@ -58,12 +58,12 @@ def deploy_and_run(
             f.write(script_content)
         sftp.close()
 
-        stdin, stdout, stderr = client.exec_command(f"python3 {remote_path}")
-        output = stdout.read().decode()
-        errors = stderr.read().decode()
+        stdin, stdout, stderr = client.exec_command(
+            f"nohup python3 {remote_path} > /tmp/scrapling_output.log 2>&1 &"
+        )
         client.close()
 
-        return {"success": True, "output": output, "errors": errors}
+        return {"success": True, "message": "脚本已部署并在后台启动"}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
