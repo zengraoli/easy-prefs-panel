@@ -19,7 +19,9 @@ export function WorkerCard({ worker, onTest, onEdit, onDelete, testing }: Worker
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">{worker.name}</h3>
-            {worker.online ? (
+            {worker.online === null || worker.online === undefined ? (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">检测中…</span>
+            ) : worker.online ? (
               <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
                 <Wifi className="h-3 w-3" /> 在线
               </span>

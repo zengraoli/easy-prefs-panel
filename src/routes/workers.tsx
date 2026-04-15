@@ -28,6 +28,14 @@ function WorkersPage() {
     try {
       const data = await workersApi.list();
       setWorkers(data);
+      // Fetch status for each worker in background (non-blocking)
+      for (const w of data) {
+        workersApi.status(w.id).then((stats) => {
+          setWorkers((prev) =>
+            prev.map((pw) => (pw.id === stats.id ? { ...pw, online: stats.online, cpu_percent: stats.cpu_percent, mem_percent: stats.mem_percent } : pw))
+          );
+        }).catch(() => {});
+      }
     } catch {
       // Backend not running — show empty state
     } finally {

@@ -47,6 +47,8 @@ export interface WorkerFormData {
 
 export const workersApi = {
   list: () => apiFetch<WorkerData[]>("/api/workers"),
+  status: (id: number) =>
+    apiFetch<{ id: number; online: boolean; cpu_percent: number; mem_percent: number }>(`/api/workers/${id}/status`),
   create: (data: WorkerFormData) => apiFetch<{ id: number; name: string }>("/api/workers", data),
   update: (id: number, data: WorkerFormData) =>
     apiFetch<{ success: boolean }>(`/api/workers/${id}`, data),

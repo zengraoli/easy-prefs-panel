@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import React, { useRef, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 
 interface WebPreviewProps {
@@ -82,10 +82,10 @@ export function WebPreview({ html, loading, onElementClick }: WebPreviewProps) {
   );
 
   // Listen for messages
-  useState(() => {
+  React.useEffect(() => {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  });
+  }, [handleMessage]);
 
   if (loading) {
     return (

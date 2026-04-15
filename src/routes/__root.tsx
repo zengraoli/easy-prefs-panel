@@ -1,5 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-
+import { Header } from "@/components/Header";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -67,5 +67,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+      <Outlet />
+    </div>
+  );
 }

@@ -30,11 +30,10 @@ class DeployRequest(BaseModel):
 
 @router.get("")
 def list_workers(db: Session = Depends(get_db)):
+    """Return workers from DB without SSH probing (fast)."""
     workers = db.query(Worker).all()
-    result = []
-    for w in workers:
-        stats = get_system_stats(w.ip, w.ssh_port, w.username, w.auth_method, w.password, w.key_path)
-        result.append({
+    return [
+        {
             "id": w.id,
             "name": w.name,
             "ip": w.ip,
@@ -42,9 +41,22 @@ def list_workers(db: Session = Depends(get_db)):
             "username": w.username,
             "auth_method": w.auth_method,
             "max_concurrency": w.max_concurrency,
-            **stats,
-        })
-    return result
+            "online": None,
+            "cpu_percent": 0,
+            "mem_percent": 0,
+        }
+        for w in workers
+    ]
+
+
+@router.get("/{worker_id}/status")
+def worker_status(worker_id: int, db: Session = Depends(get_db)):
+    """Fetch live system stats via SSH for a single worker."""
+    worker = db.query(Worker).filter(Worker.id == worker_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    stats = get_system_stats(worker.ip, worker.ssh_port, worker.username, worker.auth_method, worker.password, worker.key_path)
+    return {"id": worker.id, **stats}
 
 
 @router.post("")
