@@ -4,10 +4,12 @@ import { useState } from "react";
 
 const navItems = [
   { to: "/", label: "首页" },
+  { to: "/selector", label: "可视化选择器" },
   { to: "/fetcher", label: "单页抓取" },
   { to: "/spider", label: "爬虫配置" },
   { to: "/proxy", label: "代理管理" },
   { to: "/session", label: "会话管理" },
+  { to: "/workers", label: "机器管理" },
 ] as const;
 
 export function Header() {

@@ -8,15 +8,14 @@ export interface FetcherConfig {
   useProxy: boolean;
   proxyAddress: string;
   timeout: number;
-  // StealthyFetcher specific
   blockImages: boolean;
   humanize: boolean;
-  // PlayWrightFetcher specific
   disableWebgl: boolean;
   hideCanvas: boolean;
   networkIdle: boolean;
-  // Selectors
   selectors: SelectorRule[];
+  // Distributed
+  distributed?: DistributedConfig;
 }
 
 export interface SelectorRule {
@@ -26,11 +25,29 @@ export interface SelectorRule {
   attribute?: string;
 }
 
+export interface DistributedConfig {
+  enabled: boolean;
+  workers: DistributedWorker[];
+  strategy: "split" | "replicate" | "auto";
+}
+
+export interface DistributedWorker {
+  name: string;
+  ip: string;
+  port: number;
+  username: string;
+}
+
 export function generateFetcherCode(config: FetcherConfig): string {
   const lines: string[] = [];
   const importClass = config.type === "PlayWrightFetcher" ? "PlayWrightFetcher" : config.type;
 
   lines.push(`from scrapling import ${importClass}`);
+
+  if (config.distributed?.enabled) {
+    lines.push("import paramiko");
+  }
+
   lines.push("");
 
   // Build fetcher args
@@ -99,10 +116,43 @@ export function generateFetcherCode(config: FetcherConfig): string {
 
   lines.push('print("抓取完成！")');
 
+  // Distributed execution
+  if (config.distributed?.enabled && config.distributed.workers.length > 0) {
+    lines.push("");
+    lines.push("");
+    lines.push("# ===== 分布式执行 =====");
+    lines.push("SCRIPT_CONTENT = open(__file__).read()");
+    lines.push("");
+    lines.push("workers = [");
+    for (const w of config.distributed.workers) {
+      lines.push(`    {"name": "${w.name}", "ip": "${w.ip}", "port": ${w.port}, "username": "${w.username}"},`);
+    }
+    lines.push("]");
+    lines.push("");
+    lines.push("for worker in workers:");
+    lines.push("    ssh = paramiko.SSHClient()");
+    lines.push("    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())");
+    lines.push('    ssh.connect(worker["ip"], port=worker["port"], username=worker["username"])');
+    lines.push("    sftp = ssh.open_sftp()");
+    lines.push('    sftp.file("/tmp/scrapling_task.py", "w").write(SCRIPT_CONTENT)');
+    lines.push("    sftp.close()");
+    lines.push('    stdin, stdout, stderr = ssh.exec_command("python3 /tmp/scrapling_task.py")');
+    lines.push('    print(f"[{worker[\'name\']}] {stdout.read().decode()}")');
+    lines.push("    ssh.close()");
+  }
+
   return lines.join("\n");
 }
 
 // ===== Spider Code Generation =====
+
+export interface PaginationConfig {
+  mode: "none" | "auto" | "url_pattern";
+  urlTemplate: string;
+  startPage: number;
+  endPage: number;
+  maxPages: number;
+}
 
 export interface SpiderConfig {
   name: string;
@@ -116,23 +166,36 @@ export interface SpiderConfig {
   crawlDir: string;
   respectRobots: boolean;
   devMode: boolean;
+  pagination: PaginationConfig;
+  distributed?: DistributedConfig;
 }
 
 export function generateSpiderCode(config: SpiderConfig): string {
   const lines: string[] = [];
-  
+
   lines.push("from scrapling import Spider");
   if (config.sessionType !== "FetcherSession") {
     lines.push(`from scrapling.sessions import ${config.sessionType}`);
   }
+  if (config.distributed?.enabled) {
+    lines.push("import paramiko");
+  }
   lines.push("");
 
+  // Generate start_urls with pagination
+  let startUrls = config.startUrls;
+  if (config.pagination.mode === "url_pattern" && config.pagination.urlTemplate) {
+    startUrls = [];
+    for (let i = config.pagination.startPage; i <= config.pagination.endPage; i++) {
+      startUrls.push(config.pagination.urlTemplate.replace("{page}", String(i)));
+    }
+  }
+
   lines.push(`class ${config.name}(Spider):`);
-  
-  // Start URLs
-  const urlsStr = config.startUrls.map(u => `"${u}"`).join(", ");
+
+  const urlsStr = startUrls.map((u) => `"${u}"`).join(", ");
   lines.push(`    start_urls = [${urlsStr}]`);
-  
+
   if (config.concurrency !== 1) {
     lines.push(`    concurrency = ${config.concurrency}`);
   }
@@ -148,10 +211,10 @@ export function generateSpiderCode(config: SpiderConfig): string {
   if (config.respectRobots) {
     lines.push("    respect_robots_txt = True");
   }
-  
+
   lines.push("");
   lines.push("    def parse(self, page):");
-  
+
   if (config.selectors.length > 0) {
     for (const sel of config.selectors) {
       const varName = sel.name || "data";
@@ -176,7 +239,16 @@ export function generateSpiderCode(config: SpiderConfig): string {
     lines.push('            "url": page.url,');
     lines.push("        }");
   }
-  
+
+  // Auto pagination: follow next page link
+  if (config.pagination.mode === "auto") {
+    lines.push("");
+    lines.push("        # 自动翻页");
+    lines.push('        next_page = page.css("a[rel=\'next\'], .next a, .pagination a:last-child")');
+    lines.push("        if next_page:");
+    lines.push('            yield self.follow(next_page.attrib["href"])');
+  }
+
   lines.push("");
   lines.push("");
   lines.push("# 运行爬虫");
@@ -195,6 +267,43 @@ export function generateSpiderCode(config: SpiderConfig): string {
     lines.push(`${config.name}().run()`);
   }
 
+  // Distributed
+  if (config.distributed?.enabled && config.distributed.workers.length > 0) {
+    lines.push("");
+    lines.push("");
+    lines.push("# ===== 分布式执行 =====");
+    lines.push("SCRIPT_CONTENT = open(__file__).read()");
+    lines.push("");
+    lines.push("workers = [");
+    for (const w of config.distributed.workers) {
+      lines.push(`    {"name": "${w.name}", "ip": "${w.ip}", "port": ${w.port}, "username": "${w.username}"},`);
+    }
+    lines.push("]");
+    lines.push("");
+
+    if (config.distributed.strategy === "split") {
+      lines.push("# 平均分配 URL 到各台机器");
+      lines.push("import math");
+      lines.push("urls = " + JSON.stringify(startUrls));
+      lines.push("chunk_size = math.ceil(len(urls) / len(workers))");
+      lines.push("for i, worker in enumerate(workers):");
+      lines.push("    chunk = urls[i*chunk_size:(i+1)*chunk_size]");
+      lines.push("    # 修改 start_urls 后部署");
+    } else {
+      lines.push("for worker in workers:");
+    }
+
+    lines.push("    ssh = paramiko.SSHClient()");
+    lines.push("    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())");
+    lines.push('    ssh.connect(worker["ip"], port=worker["port"], username=worker["username"])');
+    lines.push("    sftp = ssh.open_sftp()");
+    lines.push('    sftp.file("/tmp/scrapling_task.py", "w").write(SCRIPT_CONTENT)');
+    lines.push("    sftp.close()");
+    lines.push('    stdin, stdout, stderr = ssh.exec_command("nohup python3 /tmp/scrapling_task.py &")');
+    lines.push('    print(f"[{worker[\'name\']}] 已启动")');
+    lines.push("    ssh.close()");
+  }
+
   return lines.join("\n");
 }
 
@@ -207,10 +316,10 @@ export interface ProxyConfig {
 
 export function generateProxyCode(config: ProxyConfig): string {
   const lines: string[] = [];
-  
+
   lines.push("from scrapling import Fetcher");
   lines.push("");
-  
+
   lines.push("# 代理列表");
   lines.push("proxies = [");
   for (const p of config.proxies) {
@@ -218,7 +327,7 @@ export function generateProxyCode(config: ProxyConfig): string {
   }
   lines.push("]");
   lines.push("");
-  
+
   lines.push("# 使用代理抓取");
   lines.push('fetcher = Fetcher()');
   lines.push("");
@@ -242,7 +351,7 @@ export interface SessionConfig {
 export function generateSessionCode(config: SessionConfig): string {
   const lines: string[] = [];
   const isAsync = config.type.startsWith("Async");
-  
+
   lines.push(`from scrapling.sessions import ${config.type}`);
   lines.push("");
 
