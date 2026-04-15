@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StepIndicator } from "@/components/StepIndicator";
 import { CodePreview } from "@/components/CodePreview";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { generateSpiderCode, type SpiderConfig, type SelectorRule } from "@/lib/codegen";
+import { generateSpiderCode, type SpiderConfig, type SelectorRule, type PaginationConfig, type DistributedConfig, type DistributedWorker } from "@/lib/codegen";
+import { workersApi, type WorkerData } from "@/lib/api";
 
 export const Route = createFileRoute("/spider")({
   component: SpiderPage,
@@ -22,10 +24,11 @@ export const Route = createFileRoute("/spider")({
   }),
 });
 
-const STEPS = ["基本信息", "并发与深度", "数据选择", "高级选项"];
+const STEPS = ["基本信息", "并发与翻页", "数据选择", "高级选项"];
 
 function SpiderPage() {
   const [step, setStep] = useState(0);
+  const [availableWorkers, setAvailableWorkers] = useState<WorkerData[]>([]);
   const [config, setConfig] = useState<SpiderConfig>({
     name: "MySpider",
     startUrls: ["https://example.com"],
@@ -38,9 +41,29 @@ function SpiderPage() {
     crawlDir: "",
     respectRobots: false,
     devMode: false,
+    pagination: {
+      mode: "none",
+      urlTemplate: "",
+      startPage: 1,
+      endPage: 10,
+      maxPages: 0,
+    },
+    distributed: {
+      enabled: false,
+      workers: [],
+      strategy: "replicate",
+    },
   });
 
+  useEffect(() => {
+    workersApi.list().then(setAvailableWorkers).catch(() => {});
+  }, []);
+
   const update = (partial: Partial<SpiderConfig>) => setConfig((c) => ({ ...c, ...partial }));
+  const updatePagination = (partial: Partial<PaginationConfig>) =>
+    setConfig((c) => ({ ...c, pagination: { ...c.pagination, ...partial } }));
+  const updateDistributed = (partial: Partial<DistributedConfig>) =>
+    setConfig((c) => ({ ...c, distributed: { ...(c.distributed || { enabled: false, workers: [], strategy: "replicate" }), ...partial } }));
 
   const addUrl = () => update({ startUrls: [...config.startUrls, ""] });
   const removeUrl = (i: number) => update({ startUrls: config.startUrls.filter((_, j) => j !== i) });
@@ -59,6 +82,16 @@ function SpiderPage() {
   };
   const removeSelector = (i: number) =>
     update({ selectors: config.selectors.filter((_, j) => j !== i) });
+
+  const toggleWorker = (w: WorkerData, checked: boolean) => {
+    const current = config.distributed?.workers || [];
+    if (checked) {
+      const dw: DistributedWorker = { name: w.name, ip: w.ip, port: w.ssh_port, username: w.username };
+      updateDistributed({ workers: [...current, dw] });
+    } else {
+      updateDistributed({ workers: current.filter((x) => x.ip !== w.ip) });
+    }
+  };
 
   const code = generateSpiderCode(config);
 
@@ -93,12 +126,7 @@ function SpiderPage() {
                 <div className="space-y-2">
                   {config.startUrls.map((url, i) => (
                     <div key={i} className="flex gap-2">
-                      <Input
-                        value={url}
-                        onChange={(e) => updateUrl(i, e.target.value)}
-                        placeholder="https://example.com"
-                        className="flex-1"
-                      />
+                      <Input value={url} onChange={(e) => updateUrl(i, e.target.value)} placeholder="https://example.com" className="flex-1" />
                       {config.startUrls.length > 1 && (
                         <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeUrl(i)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -114,9 +142,7 @@ function SpiderPage() {
                   <InfoTooltip text="选择不同的会话类型来处理不同的网站防护" />
                 </Label>
                 <Select value={config.sessionType} onValueChange={(v) => update({ sessionType: v as SpiderConfig["sessionType"] })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="FetcherSession">普通会话（最快）</SelectItem>
                     <SelectItem value="StealthySession">隐秘会话（反反爬）</SelectItem>
@@ -129,46 +155,75 @@ function SpiderPage() {
 
           {step === 1 && (
             <div className="space-y-5">
-              <h2 className="text-xl font-semibold">并发与深度</h2>
+              <h2 className="text-xl font-semibold">并发与翻页</h2>
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   并发数
-                  <InfoTooltip text="同时抓取的页面数量，数字越大速度越快但可能被封禁" />
+                  <InfoTooltip text="同时抓取的页面数量" />
                 </Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={config.concurrency}
-                  onChange={(e) => update({ concurrency: Number(e.target.value) })}
-                />
+                <Input type="number" min={1} max={50} value={config.concurrency} onChange={(e) => update({ concurrency: Number(e.target.value) })} />
               </div>
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   下载延迟（秒）
-                  <InfoTooltip text="每次请求之间的等待时间，设置适当延迟可以降低被封风险" />
+                  <InfoTooltip text="每次请求之间的等待时间" />
                 </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={60}
-                  step={0.5}
-                  value={config.delay}
-                  onChange={(e) => update({ delay: Number(e.target.value) })}
-                />
+                <Input type="number" min={0} max={60} step={0.5} value={config.delay} onChange={(e) => update({ delay: Number(e.target.value) })} />
               </div>
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   最大深度
                   <InfoTooltip text="从起始页面开始最多跟踪几层链接。0 表示不限制" />
                 </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={config.maxDepth}
-                  onChange={(e) => update({ maxDepth: Number(e.target.value) })}
-                />
+                <Input type="number" min={0} max={100} value={config.maxDepth} onChange={(e) => update({ maxDepth: Number(e.target.value) })} />
+              </div>
+
+              {/* Pagination */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <Label className="flex items-center gap-1.5 font-semibold">
+                  翻页模式
+                  <InfoTooltip text="配置爬虫如何处理多页内容" />
+                </Label>
+                <Select value={config.pagination.mode} onValueChange={(v) => updatePagination({ mode: v as PaginationConfig["mode"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不翻页</SelectItem>
+                    <SelectItem value="auto">自动检测下一页</SelectItem>
+                    <SelectItem value="url_pattern">URL 参数翻页</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {config.pagination.mode === "url_pattern" && (
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <Label className="mb-1 text-xs flex items-center gap-1">
+                        URL 模板
+                        <InfoTooltip text="用 {page} 替代页码，如 https://example.com/list?page={page}" />
+                      </Label>
+                      <Input value={config.pagination.urlTemplate} onChange={(e) => updatePagination({ urlTemplate: e.target.value })} placeholder="https://example.com/list?page={page}" className="font-mono text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="mb-1 text-xs">起始页码</Label>
+                        <Input type="number" min={1} value={config.pagination.startPage} onChange={(e) => updatePagination({ startPage: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label className="mb-1 text-xs">结束页码</Label>
+                        <Input type="number" min={1} value={config.pagination.endPage} onChange={(e) => updatePagination({ endPage: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {config.pagination.mode !== "none" && (
+                  <div>
+                    <Label className="mb-1 text-xs flex items-center gap-1">
+                      最多抓取页数
+                      <InfoTooltip text="限制最大抓取页数，0 表示不限制" />
+                    </Label>
+                    <Input type="number" min={0} value={config.pagination.maxPages} onChange={(e) => updatePagination({ maxPages: Number(e.target.value) })} />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -235,19 +290,15 @@ function SpiderPage() {
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   断点续爬目录
-                  <InfoTooltip text="设置保存目录后，爬虫中断可以从上次位置继续，留空则不启用" />
+                  <InfoTooltip text="设置保存目录后，爬虫中断可以从上次位置继续" />
                 </Label>
-                <Input
-                  value={config.crawlDir}
-                  onChange={(e) => update({ crawlDir: e.target.value })}
-                  placeholder="./crawl_data（留空则不启用）"
-                />
+                <Input value={config.crawlDir} onChange={(e) => update({ crawlDir: e.target.value })} placeholder="./crawl_data（留空则不启用）" />
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <Label className="flex items-center gap-1.5">
                     遵守 robots.txt
-                    <InfoTooltip text="开启后会遵守网站的爬虫协议，不抓取被禁止的页面" />
+                    <InfoTooltip text="开启后会遵守网站的爬虫协议" />
                   </Label>
                   <p className="text-xs text-muted-foreground">尊重网站的爬虫规则</p>
                 </div>
@@ -257,11 +308,65 @@ function SpiderPage() {
                 <div>
                   <Label className="flex items-center gap-1.5">
                     开发模式
-                    <InfoTooltip text="开启后只抓取少量页面用于测试，方便调试" />
+                    <InfoTooltip text="开启后只抓取少量页面用于测试" />
                   </Label>
                   <p className="text-xs text-muted-foreground">限制抓取量，方便调试</p>
                 </div>
                 <Switch checked={config.devMode} onCheckedChange={(v) => update({ devMode: v })} />
+              </div>
+
+              {/* Distributed execution */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="flex items-center gap-1.5 font-semibold">
+                      分布式执行
+                      <InfoTooltip text="将爬虫脚本分发到多台远程机器上并行执行" />
+                    </Label>
+                    <p className="text-xs text-muted-foreground">在多台机器上同时运行爬虫</p>
+                  </div>
+                  <Switch checked={config.distributed?.enabled || false} onCheckedChange={(v) => updateDistributed({ enabled: v })} />
+                </div>
+
+                {config.distributed?.enabled && (
+                  <>
+                    {availableWorkers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        尚未添加远程机器。请先到「机器管理」页面添加。
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-xs">选择执行机器</Label>
+                        {availableWorkers.map((w) => (
+                          <div key={w.id} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={config.distributed?.workers.some((x) => x.ip === w.ip) || false}
+                              onCheckedChange={(v) => toggleWorker(w, !!v)}
+                            />
+                            <span className="text-sm">{w.name} ({w.ip})</span>
+                            {w.online ? (
+                              <span className="text-xs text-success">🟢</span>
+                            ) : (
+                              <span className="text-xs text-destructive">🔴</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="mb-1 text-xs">任务分发策略</Label>
+                      <Select value={config.distributed?.strategy || "replicate"} onValueChange={(v) => updateDistributed({ strategy: v as DistributedConfig["strategy"] })}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="split">平均分配 URL</SelectItem>
+                          <SelectItem value="replicate">每台机器完整跑一遍</SelectItem>
+                          <SelectItem value="auto">按负载自动分配</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

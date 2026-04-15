@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Globe, Bot, Shield, Wifi } from "lucide-react";
+import { Globe, Bot, Shield, Wifi, MousePointerClick } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/")({
@@ -13,6 +13,13 @@ export const Route = createFileRoute("/")({
 });
 
 const features = [
+  {
+    to: "/selector" as const,
+    icon: MousePointerClick,
+    title: "可视化选择器",
+    desc: "打开网页，鼠标点选你想要的数据，自动生成选择器和抓取代码",
+    color: "bg-chart-5/10 text-chart-5",
+  },
   {
     to: "/fetcher" as const,
     icon: Globe,
