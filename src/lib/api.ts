@@ -1,8 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
-export async function apiFetch<T = unknown>(path: string, body?: unknown): Promise<T> {
+export async function apiFetch<T = unknown>(path: string, body?: unknown, method?: string): Promise<T> {
+  const resolvedMethod = method || (body ? "POST" : "GET");
   const res = await fetch(`${API_BASE}${path}`, {
-    method: body ? "POST" : "GET",
+    method: resolvedMethod,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -51,7 +52,7 @@ export const workersApi = {
     apiFetch<{ id: number; online: boolean; cpu_percent: number; mem_percent: number }>(`/api/workers/${id}/status`),
   create: (data: WorkerFormData) => apiFetch<{ id: number; name: string }>("/api/workers", data),
   update: (id: number, data: WorkerFormData) =>
-    apiFetch<{ success: boolean }>(`/api/workers/${id}`, data),
+    apiFetch<{ success: boolean }>(`/api/workers/${id}`, data, "PUT"),
   remove: (id: number) =>
     fetch(`${API_BASE}/api/workers/${id}`, { method: "DELETE" }).then((r) => r.json()),
   test: (id: number) => apiFetch<{ success: boolean; message: string }>(`/api/workers/${id}/test`, {}),
